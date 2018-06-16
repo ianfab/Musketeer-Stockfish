@@ -73,8 +73,8 @@ extern Bitboard DistanceRingBB[SQUARE_NB][8];
 extern Bitboard ForwardFileBB[COLOR_NB][SQUARE_NB];
 extern Bitboard PassedPawnMask[COLOR_NB][SQUARE_NB];
 extern Bitboard PawnAttackSpan[COLOR_NB][SQUARE_NB];
-extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
-extern Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
+extern Bitboard PseudoAttacks[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
+extern Bitboard LeaperAttacks[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
 
 
 /// Magic holds all magic bitboards relevant data for a single square
@@ -267,23 +267,14 @@ template<> inline int distance<Rank>(Square x, Square y) { return distance(rank_
 template<PieceType Pt>
 inline Bitboard attacks_bb(Square s, Bitboard occupied) {
 
+  assert(Pt == BISHOP || Pt == ROOK);
   const Magic& m = Pt == ROOK ? RookMagics[s] : BishopMagics[s];
   return m.attacks[m.index(occupied)];
 }
 
-inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
-
-  assert(pt != PAWN);
-
-  switch (pt)
-  {
-  case BISHOP: return attacks_bb<BISHOP>(s, occupied);
-  case ROOK  : return attacks_bb<  ROOK>(s, occupied);
-  case QUEEN : return attacks_bb<BISHOP>(s, occupied) | attacks_bb<ROOK>(s, occupied);
-  default    : return PseudoAttacks[pt][s];
-  }
+inline Bitboard attacks_bb(Color c, PieceType pt, Square s, Bitboard occupied) {
+  return LeaperAttacks[c][pt][s] | (PseudoAttacks[c][pt][s] & (attacks_bb<BISHOP>(s, occupied) | attacks_bb<ROOK>(s, occupied)));
 }
-
 
 /// popcount() counts the number of non-zero bits in a bitboard
 

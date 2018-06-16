@@ -37,8 +37,8 @@ Bitboard DistanceRingBB[SQUARE_NB][8];
 Bitboard ForwardFileBB[COLOR_NB][SQUARE_NB];
 Bitboard PassedPawnMask[COLOR_NB][SQUARE_NB];
 Bitboard PawnAttackSpan[COLOR_NB][SQUARE_NB];
-Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
-Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
+Bitboard PseudoAttacks[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
+Bitboard LeaperAttacks[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
 
 Magic RookMagics[SQUARE_NB];
 Magic BishopMagics[SQUARE_NB];
@@ -57,6 +57,24 @@ namespace {
     u = ((u >> 2) & 0x3333U) + (u & 0x3333U);
     u = ((u >> 4) + u) & 0x0F0FU;
     return (u * 0x0101U) >> 8;
+  }
+
+  Bitboard sliding_attack(Direction directions[], Square sq, Bitboard occupied, int max_dist = 7) {
+
+    Bitboard attack = 0;
+
+    for (int i = 0; directions[i]; ++i)
+        for (Square s = sq + directions[i];
+             is_ok(s) && distance(s, s - directions[i]) == 1 && distance(s, sq) <= max_dist;
+             s += directions[i])
+        {
+            attack |= s;
+
+            if (occupied & s)
+                break;
+        }
+
+    return attack;
   }
 }
 
@@ -119,68 +137,110 @@ void Bitboards::init() {
               DistanceRingBB[s1][SquareDistance[s1][s2] - 1] |= s2;
           }
 
-  int steps[][5] = { {}, { 7, 9 }, { 6, 10, 15, 17 }, {}, {}, {}, { 1, 7, 8, 9 } };
-
-  for (Color c = WHITE; c <= BLACK; ++c)
-      for (PieceType pt : { PAWN, KNIGHT, KING })
-          for (Square s = SQ_A1; s <= SQ_H8; ++s)
-              for (int i = 0; steps[pt][i]; ++i)
-              {
-                  Square to = s + Direction(c == WHITE ? steps[pt][i] : -steps[pt][i]);
-
-                  if (is_ok(to) && distance(s, to) < 3)
-                  {
-                      if (pt == PAWN)
-                          PawnAttacks[c][s] |= to;
-                      else
-                          PseudoAttacks[pt][s] |= to;
-                  }
-              }
-
-  Direction RookDirections[] = { NORTH,  EAST,  SOUTH,  WEST };
-  Direction BishopDirections[] = { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST };
+  // Piece moves
+  Direction RookDirections[5] = { NORTH,  EAST,  SOUTH,  WEST };
+  Direction BishopDirections[5] = { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST };
 
   init_magics(RookTable, RookMagics, RookDirections);
   init_magics(BishopTable, BishopMagics, BishopDirections);
 
+  int steps[][17] = {
+    {}, // NO_PIECE_TYPE
+    { 7, 9 }, // Pawn
+    { -17, -15, -10, -6, 6, 10, 15, 17 }, // Knight
+    {}, // Bishop
+    {}, // Rook
+    {}, // Queen
+    { -16, -10, -9, -8, -7, -6, -2, -1,
+       16,  10,  9,  8,  7,  6,  2,  1 }, // Cannon
+    { -17, -15, -10, -6, 6, 10, 15, 17 }, // Leopard
+    { -17, -15, -10, -6, 6, 10, 15, 17 }, // Archbishop
+    { -17, -15, -10, -6, 6, 10, 15, 17 }, // Chancellor
+    { -17, -16, -15, -10, -6, -2,
+       17,  16,  15,  10,  6,  2 }, // Spider
+    { -17, -15, -10, -6, 6, 10, 15, 17 }, // Dragon
+    { -25, -23, -17, -15, -11, -10, -6, -5,
+       25,  23,  17,  15,  11,  10,  6,  5}, // Unicorn
+    { -27, -24, -21, -18, -16, -14, -3, -2,
+       27,  24,  21,  18,  16,  14,  3,  2 }, // Hawk
+    { -18, -16, -14, -9, -8, -7, -2, -1,
+       18,  16,  14,  9,  8,  7,  2,  1 }, // Elephant
+    { -17, -16, -15, -2,
+       17,  16,  15,  2 }, // Fortress
+    { -9, -8, -7, -1, 1, 7, 8, 9 } // King
+  };
+  Direction slider[][9] = {
+    {}, // NO_PIECE_TYPE
+    {}, // Pawn
+    {}, // Knight
+    { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST }, // Bishop
+    { NORTH,  EAST,  SOUTH,  WEST }, // Rook
+    { NORTH,  EAST,  SOUTH,  WEST, NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST }, // Queen
+    {}, // Cannon
+    { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST }, // Leopard
+    { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST }, // Archbishop
+    { NORTH,  EAST,  SOUTH,  WEST }, // Chancellor
+    { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST }, // Spider
+    { NORTH,  EAST,  SOUTH,  WEST, NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST }, // Dragon
+    {}, // Unicorn
+    {}, // Hawk
+    {}, // Elephant
+    { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST }, // Fortress
+    {} // King
+  };
+  int slider_dist[] = {
+    0, // NO_PIECE_TYPE
+    0, // Pawn
+    0, // Knight
+    7, // Bishop
+    7, // Rook
+    7, // Queen
+    0, // Cannon
+    2, // Leopard
+    7, // Archbishop
+    7, // Chancellor
+    2, // Spider
+    7, // Dragon
+    0, // Unicorn
+    0, // Hawk
+    0, // Elephant
+    3, // Fortress
+    0  // King
+  };
+
+  for (Color c = WHITE; c <= BLACK; ++c)
+      for (PieceType pt = PAWN; pt <= KING; ++pt)
+          for (Square s = SQ_A1; s <= SQ_H8; ++s)
+          {
+              for (int i = 0; steps[pt][i]; ++i)
+              {
+                  Square to = s + Direction(c == WHITE ? steps[pt][i] : -steps[pt][i]);
+
+                  if (is_ok(to) && distance(s, to) < 4)
+                  {
+                      PseudoAttacks[c][pt][s] |= to;
+                      LeaperAttacks[c][pt][s] |= to;
+                  }
+              }
+              PseudoAttacks[c][pt][s] |= sliding_attack(slider[pt], s, 0, slider_dist[pt]);
+          }
+
   for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
   {
-      PseudoAttacks[QUEEN][s1]  = PseudoAttacks[BISHOP][s1] = attacks_bb<BISHOP>(s1, 0);
-      PseudoAttacks[QUEEN][s1] |= PseudoAttacks[  ROOK][s1] = attacks_bb<  ROOK>(s1, 0);
-
       for (PieceType pt : { BISHOP, ROOK })
           for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
           {
-              if (!(PseudoAttacks[pt][s1] & s2))
+              if (!(PseudoAttacks[WHITE][pt][s1] & s2))
                   continue;
 
-              LineBB[s1][s2] = (attacks_bb(pt, s1, 0) & attacks_bb(pt, s2, 0)) | s1 | s2;
-              BetweenBB[s1][s2] = attacks_bb(pt, s1, SquareBB[s2]) & attacks_bb(pt, s2, SquareBB[s1]);
+              LineBB[s1][s2] = (attacks_bb(WHITE, pt, s1, 0) & attacks_bb(WHITE, pt, s2, 0)) | s1 | s2;
+              BetweenBB[s1][s2] = attacks_bb(WHITE, pt, s1, SquareBB[s2]) & attacks_bb(WHITE, pt, s2, SquareBB[s1]);
           }
   }
 }
 
 
 namespace {
-
-  Bitboard sliding_attack(Direction directions[], Square sq, Bitboard occupied) {
-
-    Bitboard attack = 0;
-
-    for (int i = 0; i < 4; ++i)
-        for (Square s = sq + directions[i];
-             is_ok(s) && distance(s, s - directions[i]) == 1;
-             s += directions[i])
-        {
-            attack |= s;
-
-            if (occupied & s)
-                break;
-        }
-
-    return attack;
-  }
-
 
   // init_magics() computes all rook and bishop attacks at startup. Magic
   // bitboards are used to look up attacks of sliding pieces. As a reference see

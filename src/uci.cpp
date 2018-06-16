@@ -291,10 +291,17 @@ string UCI::move(Move m, bool chess960) {
   if (type_of(m) == CASTLING && !chess960)
       to = make_square(to > from ? FILE_G : FILE_C, rank_of(from));
 
+  if (type_of(m) == SET_GATING_TYPE)
+      return string(1, PieceToChar[make_piece(WHITE, gating_type(m))]);
+
+  if (type_of(m) == PUT_GATING_PIECE)
+      return  string{PieceToChar[make_piece(WHITE, gating_type(m))], '@'}
+            + string{char('a' + file_of(to)), rank_of(to) == RANK_8 ? '9' : '0'};
+
   string move = UCI::square(from) + UCI::square(to);
 
   if (type_of(m) == PROMOTION)
-      move += " pnbrqk"[promotion_type(m)];
+      move += PieceToChar[make_piece(BLACK, promotion_type(m))];
 
   return move;
 }

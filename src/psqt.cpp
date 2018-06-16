@@ -23,8 +23,8 @@
 #include "types.h"
 
 Value PieceValue[PHASE_NB][PIECE_NB] = {
-  { VALUE_ZERO, PawnValueMg, KnightValueMg, BishopValueMg, RookValueMg, QueenValueMg },
-  { VALUE_ZERO, PawnValueEg, KnightValueEg, BishopValueEg, RookValueEg, QueenValueEg }
+  { VALUE_ZERO, PawnValueMg, KnightValueMg, BishopValueMg, RookValueMg, QueenValueMg, CannonValueMg, LeopardValueMg, ArchbishopValueMg, ChancellorValueMg, SpiderValueMg, DragonValueMg, UnicornValueMg, HawkValueMg, ElephantValueMg, FortressValueMg },
+  { VALUE_ZERO, PawnValueEg, KnightValueEg, BishopValueEg, RookValueEg, QueenValueEg, CannonValueEg, LeopardValueEg, ArchbishopValueEg, ChancellorValueEg, SpiderValueEg, DragonValueEg, UnicornValueEg, HawkValueEg, ElephantValueEg, FortressValueEg }
 };
 
 namespace PSQT {
@@ -35,7 +35,7 @@ namespace PSQT {
 // type on a given square a (middlegame, endgame) score pair is assigned. Table
 // is defined for files A..D and white side: it is symmetric for black side and
 // second half of the files.
-constexpr Score Bonus[][RANK_NB][int(FILE_NB) / 2] = {
+constexpr Score Bonus[PIECE_TYPE_NB][RANK_NB][int(FILE_NB) / 2] = {
   { },
   { // Pawn
    { S(  0, 0), S(  0, 0), S(  0, 0), S( 0, 0) },
@@ -86,6 +86,106 @@ constexpr Score Bonus[][RANK_NB][int(FILE_NB) / 2] = {
    { S(-2,-55), S( 7,-30), S( 7,-21), S( 6, -6) },
    { S(-1,-74), S(-4,-55), S(-1,-43), S( 0,-30) }
   },
+  { // Cannon
+   { S( 0,-71), S(-4,-56), S(-3,-42), S(-1,-29) },
+   { S(-4,-56), S( 6,-30), S( 9,-21), S( 8, -5) },
+   { S(-2,-39), S( 6,-17), S( 9, -8), S( 9,  5) },
+   { S(-1,-29), S( 8, -5), S(10,  9), S( 7, 19) },
+   { S(-3,-27), S( 9, -5), S( 8, 10), S( 7, 21) },
+   { S(-2,-40), S( 6,-16), S( 8,-10), S(10,  3) },
+   { S(-2,-55), S( 7,-30), S( 7,-21), S( 6, -6) },
+   { S(-1,-74), S(-4,-55), S(-1,-43), S( 0,-30) }
+  },
+  { // Leopard
+   { S( 0,-71), S(-4,-56), S(-3,-42), S(-1,-29) },
+   { S(-4,-56), S( 6,-30), S( 9,-21), S( 8, -5) },
+   { S(-2,-39), S( 6,-17), S( 9, -8), S( 9,  5) },
+   { S(-1,-29), S( 8, -5), S(10,  9), S( 7, 19) },
+   { S(-3,-27), S( 9, -5), S( 8, 10), S( 7, 21) },
+   { S(-2,-40), S( 6,-16), S( 8,-10), S(10,  3) },
+   { S(-2,-55), S( 7,-30), S( 7,-21), S( 6, -6) },
+   { S(-1,-74), S(-4,-55), S(-1,-43), S( 0,-30) }
+  },
+  { // Archbishop
+   { S( 0,-71), S(-4,-56), S(-3,-42), S(-1,-29) },
+   { S(-4,-56), S( 6,-30), S( 9,-21), S( 8, -5) },
+   { S(-2,-39), S( 6,-17), S( 9, -8), S( 9,  5) },
+   { S(-1,-29), S( 8, -5), S(10,  9), S( 7, 19) },
+   { S(-3,-27), S( 9, -5), S( 8, 10), S( 7, 21) },
+   { S(-2,-40), S( 6,-16), S( 8,-10), S(10,  3) },
+   { S(-2,-55), S( 7,-30), S( 7,-21), S( 6, -6) },
+   { S(-1,-74), S(-4,-55), S(-1,-43), S( 0,-30) }
+  },
+  { // Chancellor
+   { S( 0,-71), S(-4,-56), S(-3,-42), S(-1,-29) },
+   { S(-4,-56), S( 6,-30), S( 9,-21), S( 8, -5) },
+   { S(-2,-39), S( 6,-17), S( 9, -8), S( 9,  5) },
+   { S(-1,-29), S( 8, -5), S(10,  9), S( 7, 19) },
+   { S(-3,-27), S( 9, -5), S( 8, 10), S( 7, 21) },
+   { S(-2,-40), S( 6,-16), S( 8,-10), S(10,  3) },
+   { S(-2,-55), S( 7,-30), S( 7,-21), S( 6, -6) },
+   { S(-1,-74), S(-4,-55), S(-1,-43), S( 0,-30) }
+  },
+  { // Spider
+   { S( 0,-71), S(-4,-56), S(-3,-42), S(-1,-29) },
+   { S(-4,-56), S( 6,-30), S( 9,-21), S( 8, -5) },
+   { S(-2,-39), S( 6,-17), S( 9, -8), S( 9,  5) },
+   { S(-1,-29), S( 8, -5), S(10,  9), S( 7, 19) },
+   { S(-3,-27), S( 9, -5), S( 8, 10), S( 7, 21) },
+   { S(-2,-40), S( 6,-16), S( 8,-10), S(10,  3) },
+   { S(-2,-55), S( 7,-30), S( 7,-21), S( 6, -6) },
+   { S(-1,-74), S(-4,-55), S(-1,-43), S( 0,-30) }
+  },
+  { // Dragon
+   { S( 0,-71), S(-4,-56), S(-3,-42), S(-1,-29) },
+   { S(-4,-56), S( 6,-30), S( 9,-21), S( 8, -5) },
+   { S(-2,-39), S( 6,-17), S( 9, -8), S( 9,  5) },
+   { S(-1,-29), S( 8, -5), S(10,  9), S( 7, 19) },
+   { S(-3,-27), S( 9, -5), S( 8, 10), S( 7, 21) },
+   { S(-2,-40), S( 6,-16), S( 8,-10), S(10,  3) },
+   { S(-2,-55), S( 7,-30), S( 7,-21), S( 6, -6) },
+   { S(-1,-74), S(-4,-55), S(-1,-43), S( 0,-30) }
+  },
+  { // Unicorn
+   { S( 0,-71), S(-4,-56), S(-3,-42), S(-1,-29) },
+   { S(-4,-56), S( 6,-30), S( 9,-21), S( 8, -5) },
+   { S(-2,-39), S( 6,-17), S( 9, -8), S( 9,  5) },
+   { S(-1,-29), S( 8, -5), S(10,  9), S( 7, 19) },
+   { S(-3,-27), S( 9, -5), S( 8, 10), S( 7, 21) },
+   { S(-2,-40), S( 6,-16), S( 8,-10), S(10,  3) },
+   { S(-2,-55), S( 7,-30), S( 7,-21), S( 6, -6) },
+   { S(-1,-74), S(-4,-55), S(-1,-43), S( 0,-30) }
+  },
+  { // Hawk
+   { S( 0,-71), S(-4,-56), S(-3,-42), S(-1,-29) },
+   { S(-4,-56), S( 6,-30), S( 9,-21), S( 8, -5) },
+   { S(-2,-39), S( 6,-17), S( 9, -8), S( 9,  5) },
+   { S(-1,-29), S( 8, -5), S(10,  9), S( 7, 19) },
+   { S(-3,-27), S( 9, -5), S( 8, 10), S( 7, 21) },
+   { S(-2,-40), S( 6,-16), S( 8,-10), S(10,  3) },
+   { S(-2,-55), S( 7,-30), S( 7,-21), S( 6, -6) },
+   { S(-1,-74), S(-4,-55), S(-1,-43), S( 0,-30) }
+  },
+  { // Elephant
+   { S( 0,-71), S(-4,-56), S(-3,-42), S(-1,-29) },
+   { S(-4,-56), S( 6,-30), S( 9,-21), S( 8, -5) },
+   { S(-2,-39), S( 6,-17), S( 9, -8), S( 9,  5) },
+   { S(-1,-29), S( 8, -5), S(10,  9), S( 7, 19) },
+   { S(-3,-27), S( 9, -5), S( 8, 10), S( 7, 21) },
+   { S(-2,-40), S( 6,-16), S( 8,-10), S(10,  3) },
+   { S(-2,-55), S( 7,-30), S( 7,-21), S( 6, -6) },
+   { S(-1,-74), S(-4,-55), S(-1,-43), S( 0,-30) }
+  },
+  { // Fortress
+   { S( 0,-71), S(-4,-56), S(-3,-42), S(-1,-29) },
+   { S(-4,-56), S( 6,-30), S( 9,-21), S( 8, -5) },
+   { S(-2,-39), S( 6,-17), S( 9, -8), S( 9,  5) },
+   { S(-1,-29), S( 8, -5), S(10,  9), S( 7, 19) },
+   { S(-3,-27), S( 9, -5), S( 8, 10), S( 7, 21) },
+   { S(-2,-40), S( 6,-16), S( 8,-10), S(10,  3) },
+   { S(-2,-55), S( 7,-30), S( 7,-21), S( 6, -6) },
+   { S(-1,-74), S(-4,-55), S(-1,-43), S( 0,-30) }
+  },
   { // King
    { S(267,  0), S(320, 48), S(270, 75), S(195, 84) },
    { S(264, 43), S(304, 92), S(238,143), S(180,132) },
@@ -101,14 +201,17 @@ constexpr Score Bonus[][RANK_NB][int(FILE_NB) / 2] = {
 #undef S
 
 Score psq[PIECE_NB][SQUARE_NB];
+Score psq_gate[PIECE_NB][FILE_NB];
 
 // init() initializes piece-square tables: the white halves of the tables are
 // copied from Bonus[] adding the piece value, then the black halves of the
 // tables are initialized by flipping and changing the sign of the white scores.
 void init() {
 
-  for (Piece pc = W_PAWN; pc <= W_KING; ++pc)
+  for (PieceType pt = PAWN; pt <= KING; ++pt)
   {
+      Piece pc = make_piece(WHITE, pt);
+
       PieceValue[MG][~pc] = PieceValue[MG][pc];
       PieceValue[EG][~pc] = PieceValue[EG][pc];
 
@@ -119,6 +222,11 @@ void init() {
           File f = std::min(file_of(s), ~file_of(s));
           psq[ pc][ s] = score + Bonus[pc][rank_of(s)][f];
           psq[~pc][~s] = -psq[pc][s];
+      }
+      for (File f = FILE_A; f <= FILE_H; ++f)
+      {
+          psq_gate[ pc][ f] = score;
+          psq_gate[~pc][~f] = -psq_gate[pc][f];
       }
   }
 }

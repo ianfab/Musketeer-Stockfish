@@ -34,8 +34,8 @@ namespace Trace {
 
   enum Tracing { NO_TRACE, TRACE };
 
-  enum Term { // The first 8 entries are reserved for PieceType
-    MATERIAL = 8, IMBALANCE, MOBILITY, THREAT, PASSED, SPACE, INITIATIVE, TOTAL, TERM_NB
+  enum Term { // The first PIECE_TYPE_NB entries are reserved for PieceType
+    MATERIAL = PIECE_TYPE_NB, IMBALANCE, MOBILITY, THREAT, PASSED, SPACE, INITIATIVE, TOTAL, TERM_NB
   };
 
   Score scores[TERM_NB][COLOR_NB];
@@ -101,7 +101,7 @@ namespace {
 
   // MobilityBonus[PieceType-2][attacked] contains bonuses for middle and end game,
   // indexed by piece type and number of attacked squares in the mobility area.
-  constexpr Score MobilityBonus[][32] = {
+  constexpr Score MobilityBonus[PIECE_TYPE_NB - 2][32] = {
     { S(-75,-76), S(-57,-54), S( -9,-28), S( -2,-10), S(  6,  5), S( 14, 12), // Knights
       S( 22, 26), S( 29, 29), S( 36, 29) },
     { S(-48,-59), S(-20,-23), S( 16, -3), S( 26, 13), S( 38, 24), S( 51, 42), // Bishops
@@ -159,7 +159,7 @@ namespace {
   constexpr int PassedDanger[RANK_NB] = { 0, 0, 0, 3, 6, 12, 21 };
 
   // KingProtector[PieceType-2] contains a penalty according to distance from king
-  constexpr Score KingProtector[] = { S(3, 5), S(4, 3), S(3, 0), S(1, -1) };
+  constexpr Score KingProtector[PIECE_TYPE_NB - 2] = { S(3, 5), S(4, 3), S(3, 0), S(1, -1) };
 
   // Assorted bonuses and penalties
   constexpr Score BishopPawns        = S(  3,  5);
@@ -263,7 +263,7 @@ namespace {
     mobilityArea[Us] = ~(b | pos.pieces(Us, KING, QUEEN) | pe->pawn_attacks(Them));
 
     // Initialise attackedBy bitboards for kings and pawns
-    attackedBy[Us][KING] = pos.attacks_from<KING>(pos.square<KING>(Us));
+    attackedBy[Us][KING] = pos.attacks_from<KING>(Us, pos.square<KING>(Us));
     attackedBy[Us][PAWN] = pe->pawn_attacks(Us);
     attackedBy[Us][ALL_PIECES] = attackedBy[Us][KING] | attackedBy[Us][PAWN];
     attackedBy2[Us]            = attackedBy[Us][KING] & attackedBy[Us][PAWN];
@@ -310,7 +310,7 @@ namespace {
         // Find attacked squares, including x-ray attacks for bishops and rooks
         b = Pt == BISHOP ? attacks_bb<BISHOP>(s, pos.pieces() ^ pos.pieces(QUEEN))
           : Pt ==   ROOK ? attacks_bb<  ROOK>(s, pos.pieces() ^ pos.pieces(QUEEN) ^ pos.pieces(Us, ROOK))
-                         : pos.attacks_from<Pt>(s);
+                         : pos.attacks_from<Pt>(Us, s);
 
         if (pos.blockers_for_king(Us) & s)
             b &= LineBB[pos.square<KING>(Us)][s];
@@ -381,7 +381,7 @@ namespace {
         {
             // Bonus for aligning rook with enemy pawns on the same rank/file
             if (relative_rank(Us, s) >= RANK_5)
-                score += RookOnPawn * popcount(pos.pieces(Them, PAWN) & PseudoAttacks[ROOK][s]);
+                score += RookOnPawn * popcount(pos.pieces(Them, PAWN) & PseudoAttacks[Us][ROOK][s]);
 
             // Bonus for rook on an open or semi-open file
             if (pe->semiopen_file(Us, file_of(s)))
@@ -463,7 +463,7 @@ namespace {
             unsafeChecks |= b2;
 
         // Enemy knights checks
-        b = pos.attacks_from<KNIGHT>(ksq) & attackedBy[Them][KNIGHT];
+        b = pos.attacks_from<KNIGHT>(Us, ksq) & attackedBy[Them][KNIGHT];
         if (b & safe)
             kingDanger += KnightSafeCheck;
         else
@@ -603,12 +603,12 @@ namespace {
         Square s = pos.square<QUEEN>(Them);
         safeThreats = mobilityArea[Us] & ~stronglyProtected;
 
-        b = attackedBy[Us][KNIGHT] & pos.attacks_from<KNIGHT>(s);
+        b = attackedBy[Us][KNIGHT] & pos.attacks_from<KNIGHT>(Us, s);
 
         score += KnightOnQueen * popcount(b & safeThreats);
 
-        b =  (attackedBy[Us][BISHOP] & pos.attacks_from<BISHOP>(s))
-           | (attackedBy[Us][ROOK  ] & pos.attacks_from<ROOK  >(s));
+        b =  (attackedBy[Us][BISHOP] & pos.attacks_from<BISHOP>(Us, s))
+           | (attackedBy[Us][ROOK  ] & pos.attacks_from<ROOK  >(Us, s));
 
         score += SliderOnQueen * popcount(b & safeThreats & attackedBy2[Us]);
     }
@@ -675,7 +675,7 @@ namespace {
                 // in the pawn's path attacked or occupied by the enemy.
                 defendedSquares = unsafeSquares = squaresToQueen = forward_file_bb(Us, s);
 
-                bb = forward_file_bb(Them, s) & pos.pieces(ROOK, QUEEN) & pos.attacks_from<ROOK>(s);
+                bb = forward_file_bb(Them, s) & pos.pieces(ROOK, QUEEN) & pos.attacks_from<ROOK>(Us, s);
 
                 if (!(pos.pieces(Us) & bb))
                     defendedSquares &= attackedBy[Us][ALL_PIECES];

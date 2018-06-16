@@ -122,9 +122,14 @@ enum Move : int {
 
 enum MoveType {
   NORMAL,
-  PROMOTION = 1 << 14,
-  ENPASSANT = 2 << 14,
-  CASTLING  = 3 << 14
+  ENPASSANT          = 1 << 12,
+  CASTLING           = 2 << 12,
+  PROMOTION          = 3 << 12,
+  PROMOTION_STRAIGHT = PROMOTION,
+  PROMOTION_LEFT     = 4 << 12,
+  PROMOTION_RIGHT    = 5 << 12,
+  SET_GATING_TYPE    = 6 << 12,
+  PUT_GATING_PIECE   = 7 << 12,
 };
 
 enum Color {
@@ -149,6 +154,13 @@ template<Color C, CastlingSide S> struct MakeCastling {
   static constexpr CastlingRight
   right = C == WHITE ? S == QUEEN_SIDE ? WHITE_OOO : WHITE_OO
                      : S == QUEEN_SIDE ? BLACK_OOO : BLACK_OO;
+};
+
+enum GamePhase {
+  GAMEPHASE_SELECTION,
+  GAMEPHASE_PLACING,
+  GAMEPHASE_PLAYING,
+  GAMEPHASE_NB
 };
 
 enum Phase {
@@ -182,27 +194,51 @@ enum Value : int {
   VALUE_MATE_IN_MAX_PLY  =  VALUE_MATE - 2 * MAX_PLY,
   VALUE_MATED_IN_MAX_PLY = -VALUE_MATE + 2 * MAX_PLY,
 
-  PawnValueMg   = 171,   PawnValueEg   = 240,
-  KnightValueMg = 764,   KnightValueEg = 848,
-  BishopValueMg = 826,   BishopValueEg = 891,
-  RookValueMg   = 1282,  RookValueEg   = 1373,
-  QueenValueMg  = 2500,  QueenValueEg  = 2670,
+  PawnValueMg       = 171,  PawnValueEg       = 240,
+  KnightValueMg     = 764,  KnightValueEg     = 848,
+  BishopValueMg     = 826,  BishopValueEg     = 891,
+  RookValueMg       = 1282, RookValueEg       = 1373,
+  QueenValueMg      = 2500, QueenValueEg      = 2670,
+  CannonValueMg     = 1710, CannonValueEg     = 2239,
+  LeopardValueMg    = 1648, LeopardValueEg    = 2014,
+  ArchbishopValueMg = 2036, ArchbishopValueEg = 2202,
+  ChancellorValueMg = 2251, ChancellorValueEg = 2344,
+  SpiderValueMg     = 2321, SpiderValueEg     = 2718,
+  DragonValueMg     = 3280, DragonValueEg     = 2769,
+  UnicornValueMg    = 1584, UnicornValueEg    = 1772,
+  HawkValueMg       = 1537, HawkValueEg       = 1561,
+  ElephantValueMg   = 1770, ElephantValueEg   = 2000,
+  FortressValueMg   = 1956, FortressValueEg   = 2100,
 
   MidgameLimit  = 15258, EndgameLimit  = 3915
 };
 
-enum PieceType {
-  NO_PIECE_TYPE, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING,
-  ALL_PIECES = 0,
-  PIECE_TYPE_NB = 8
+const int PIECE_TYPE_BITS = 5; // PIECE_TYPE_NB = pow(2, PIECE_TYPE_BITS)
+const int MAX_GATES = 2;
+
+enum Gate {
+  NO_GATE, GATE_1, GATE_2,
+  GATE_NB = MAX_GATES + 1
 };
+
+enum PieceType {
+  NO_PIECE_TYPE, PAWN, KNIGHT, BISHOP, ROOK, QUEEN,
+  CANNON, LEOPARD, ARCHBISHOP, CHANCELLOR, SPIDER,
+  DRAGON, UNICORN, HAWK, ELEPHANT, FORTRESS, KING,
+  ALL_PIECES = 0,
+
+  PIECE_TYPE_NB = 1 << PIECE_TYPE_BITS
+};
+static_assert(PIECE_TYPE_BITS <= 6, "PIECE_TYPE uses more than 6 bit");
+static_assert(!(PIECE_TYPE_NB & (PIECE_TYPE_NB - 1)), "PIECE_TYPE_NB is not a power of 2");
 
 enum Piece {
   NO_PIECE,
-  W_PAWN = 1, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
-  B_PAWN = 9, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING,
-  PIECE_NB = 16
+  PIECE_NB = 2 * PIECE_TYPE_NB
 };
+
+const std::string PieceToChar(  " PNBRQCLAOSDUHEFK" + std::string(PIECE_TYPE_NB - KING - 1, ' ')
+                              + " pnbrqclaosduhefk" + std::string(PIECE_TYPE_NB - KING - 1, ' '));
 
 extern Value PieceValue[PHASE_NB][PIECE_NB];
 
@@ -288,7 +324,9 @@ inline T& operator-=(T& d1, T d2) { return d1 = d1 - d2; }
 
 #define ENABLE_INCR_OPERATORS_ON(T)                                \
 inline T& operator++(T& d) { return d = T(int(d) + 1); }           \
-inline T& operator--(T& d) { return d = T(int(d) - 1); }
+inline T& operator--(T& d) { return d = T(int(d) - 1); }           \
+inline T operator++(T& d, int) { T a = d; d = T(int(d) + 1); return a; } \
+inline T operator--(T& d, int) { T a = d; d = T(int(d) - 1); return a; }
 
 #define ENABLE_FULL_OPERATORS_ON(T)                                \
 ENABLE_BASE_OPERATORS_ON(T)                                        \
@@ -304,6 +342,7 @@ ENABLE_FULL_OPERATORS_ON(Value)
 ENABLE_FULL_OPERATORS_ON(Depth)
 ENABLE_FULL_OPERATORS_ON(Direction)
 
+ENABLE_INCR_OPERATORS_ON(Gate)
 ENABLE_INCR_OPERATORS_ON(PieceType)
 ENABLE_INCR_OPERATORS_ON(Piece)
 ENABLE_INCR_OPERATORS_ON(Color)
@@ -363,7 +402,7 @@ constexpr File operator~(File f) {
 }
 
 constexpr Piece operator~(Piece pc) {
-  return Piece(pc ^ 8); // Swap color of piece B_KNIGHT -> W_KNIGHT
+  return Piece(pc ^ PIECE_TYPE_NB); // Swap color of piece BLACK KNIGHT -> WHITE KNIGHT
 }
 
 constexpr CastlingRight operator|(Color c, CastlingSide s) {
@@ -383,16 +422,16 @@ constexpr Square make_square(File f, Rank r) {
 }
 
 constexpr Piece make_piece(Color c, PieceType pt) {
-  return Piece((c << 3) + pt);
+  return Piece((c << PIECE_TYPE_BITS) + pt);
 }
 
 constexpr PieceType type_of(Piece pc) {
-  return PieceType(pc & 7);
+  return PieceType(pc & (PIECE_TYPE_NB - 1));
 }
 
 inline Color color_of(Piece pc) {
   assert(pc != NO_PIECE);
-  return Color(pc >> 3);
+  return Color(pc >> PIECE_TYPE_BITS);
 }
 
 constexpr bool is_ok(Square s) {
@@ -428,24 +467,45 @@ constexpr Direction pawn_push(Color c) {
   return c == WHITE ? NORTH : SOUTH;
 }
 
-constexpr Square from_sq(Move m) {
-  return Square((m >> 6) & 0x3F);
+inline MoveType type_of(Move m) {
+  MoveType t = MoveType(m & (15 << 12));
+  if (t == PROMOTION_STRAIGHT || t == PROMOTION_LEFT || t == PROMOTION_RIGHT)
+      return PROMOTION;
+  return t;
 }
 
 constexpr Square to_sq(Move m) {
   return Square(m & 0x3F);
 }
 
-constexpr int from_to(Move m) {
- return m & 0xFFF;
+inline Square from_sq(Move m) {
+  if (type_of(m) == PROMOTION)
+  {
+      Square to = to_sq(m);
+      MoveType t = MoveType(m & (15 << 12));
+      // Assume here that promotion occur only for relative ranks >= RANK_5.
+      Direction up = (to & 32) ? NORTH : SOUTH;
+      if (t == PROMOTION_STRAIGHT)
+          return to - up;
+      if (t == PROMOTION_LEFT)
+          return to - up - WEST;
+      if (t == PROMOTION_RIGHT)
+          return to - up - EAST;
+      assert(false);
+  }
+  return Square((m >> 6) & 0x3F);
 }
 
-constexpr MoveType type_of(Move m) {
-  return MoveType(m & (3 << 14));
+inline int from_to(Move m) {
+ return to_sq(m) + (from_sq(m) << 6);
 }
 
-constexpr PieceType promotion_type(Move m) {
-  return PieceType(((m >> 12) & 3) + KNIGHT);
+inline PieceType promotion_type(Move m) {
+  return type_of(m) == PROMOTION ? PieceType((m >> 6) & 63) : NO_PIECE_TYPE;
+}
+
+inline PieceType gating_type(Move m) {
+  return type_of(m) == SET_GATING_TYPE || type_of(m) == PUT_GATING_PIECE ? PieceType((m >> 6) & 63) : NO_PIECE_TYPE;
 }
 
 inline Move make_move(Square from, Square to) {
@@ -453,12 +513,15 @@ inline Move make_move(Square from, Square to) {
 }
 
 template<MoveType T>
-constexpr Move make(Square from, Square to, PieceType pt = KNIGHT) {
-  return Move(T + ((pt - KNIGHT) << 12) + (from << 6) + to);
+inline Move make(Square from, Square to, PieceType pt = NO_PIECE_TYPE) {
+  if (T == PROMOTION_STRAIGHT || T == PROMOTION_LEFT || T == PROMOTION_RIGHT
+      || T == SET_GATING_TYPE || T == PUT_GATING_PIECE)
+      return Move(T + (pt << 6) + to);
+  return Move(T + (from << 6) + to);
 }
 
-constexpr bool is_ok(Move m) {
-  return from_sq(m) != to_sq(m); // Catch MOVE_NULL and MOVE_NONE
+inline bool is_ok(Move m) {
+  return from_sq(m) != to_sq(m) || type_of(m) == SET_GATING_TYPE || type_of(m) == PUT_GATING_PIECE; // Catch MOVE_NULL and MOVE_NONE
 }
 
 #endif // #ifndef TYPES_H_INCLUDED

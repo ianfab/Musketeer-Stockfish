@@ -110,10 +110,7 @@ namespace {
   void update_capture_stats(const Position& pos, Move move, Move* captures, int captureCnt, int bonus);
 
   inline bool gives_check(const Position& pos, Move move) {
-    Color us = pos.side_to_move();
-    return  type_of(move) == NORMAL && !(pos.blockers_for_king(~us) & pos.pieces(us))
-          ? pos.check_squares(type_of(pos.moved_piece(move))) & to_sq(move)
-          : pos.gives_check(move);
+    return  pos.gives_check(move);
   }
 
   // perft() is our utility to verify move generation. All the leaf nodes up
@@ -737,6 +734,7 @@ namespace {
 
     // Step 9. Null move search with verification search (~40 Elo)
     if (   !PvNode
+        && pos.game_phase() == GAMEPHASE_PLAYING
         && (ss-1)->currentMove != MOVE_NULL
         && (ss-1)->statScore < 22500
         &&  eval >= beta
