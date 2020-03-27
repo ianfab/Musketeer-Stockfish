@@ -134,7 +134,7 @@ namespace {
             pos.undo_move(m);
         }
         if (Root)
-            sync_cout << UCI::move(m, pos.is_chess960()) << ": " << cnt << sync_endl;
+            sync_cout << UCI::move(m, pos) << ": " << cnt << sync_endl;
     }
     return nodes;
   }
@@ -199,6 +199,12 @@ void MainThread::search() {
   if (rootMoves.empty())
   {
       rootMoves.emplace_back(MOVE_NONE);
+      if (Options["Protocol"] == "xboard")
+          sync_cout << (  !rootPos.checkers() ? "1/2-1/2 {Draw}"
+                        : rootPos.side_to_move() == BLACK ? "1-0 {White mates}"
+                                                          : "0-1 {Black mates}")
+                    << sync_endl;
+      else
       sync_cout << "info depth 0 score "
                 << UCI::value(rootPos.checkers() ? -VALUE_MATE : VALUE_DRAW)
                 << sync_endl;
@@ -237,7 +243,7 @@ void MainThread::search() {
       Time.availableNodes += Limits.inc[us] - Threads.nodes_searched();
 
   // Check if there are threads with a better score than main thread
-  Thread* bestThread = this;
+  bestThread = this;
   if (    Options["MultiPV"] == 1
       && !Limits.depth
       && !Skill(Options["Skill Level"]).enabled()
@@ -261,10 +267,17 @@ void MainThread::search() {
   if (bestThread != this)
       sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
 
-  sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
+  if (Options["Protocol"] == "xboard")
+  {
+      // Send move only when not in analyze mode and not at game end
+      if (!Options["UCI_AnalyseMode"] && rootMoves[0].pv[0] != MOVE_NONE)
+          sync_cout << "move " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos) << sync_endl;
+      return;
+  }
+  sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos);
 
   if (bestThread->rootMoves[0].pv.size() > 1 || bestThread->rootMoves[0].extract_ponder_from_tt(rootPos))
-      std::cout << " ponder " << UCI::move(bestThread->rootMoves[0].pv[1], rootPos.is_chess960());
+      std::cout << " ponder " << UCI::move(bestThread->rootMoves[0].pv[1], rootPos);
 
   std::cout << sync_endl;
 }
@@ -866,9 +879,9 @@ moves_loop: // When in check, search starts from here
 
       ss->moveCount = ++moveCount;
 
-      if (rootNode && thisThread == Threads.main() && Time.elapsed() > 3000)
+      if (rootNode && thisThread == Threads.main() && Time.elapsed() > 3000 && Options["Protocol"] == "uci")
           sync_cout << "info depth " << depth / ONE_PLY
-                    << " currmove " << UCI::move(move, pos.is_chess960())
+                    << " currmove " << UCI::move(move, pos)
                     << " currmovenumber " << moveCount + thisThread->pvIdx << sync_endl;
       if (PvNode)
           (ss+1)->pv = nullptr;
@@ -1585,6 +1598,21 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
       if (ss.rdbuf()->in_avail()) // Not at first line
           ss << "\n";
 
+      if (Options["Protocol"] == "xboard")
+      {
+          ss << d << " "
+             << UCI::value(v) << " "
+             << elapsed / 10 << " "
+             << nodesSearched << " "
+             << rootMoves[i].selDepth << " "
+             << nodesSearched * 1000 / elapsed << " "
+             << tbHits << "\t";
+
+          for (Move m : rootMoves[i].pv)
+              ss << " " << UCI::move(m, pos);
+      }
+      else
+      {
       ss << "info"
          << " depth "    << d / ONE_PLY
          << " seldepth " << rootMoves[i].selDepth
@@ -1605,7 +1633,8 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
          << " pv";
 
       for (Move m : rootMoves[i].pv)
-          ss << " " << UCI::move(m, pos.is_chess960());
+          ss << " " << UCI::move(m, pos);
+      }
   }
 
   return ss.str();

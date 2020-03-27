@@ -259,26 +259,61 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
 
   ss >> std::noskipws;
 
+  // Detect FEN format
+  bool xboard = ss.str().find('*') != std::string::npos;
+
   // 1. Piece placement
-  while ((ss >> token) && !isspace(token))
+  // Black gating pieces in XBoard format
+  if (xboard)
+  {
+      for (Square s = SQ_A8; (ss >> token) && token != '/' && s <= SQ_H8; s++)
+      {
+          if ((idx = PieceToChar.find(token)) != string::npos)
+          {
+              set_gating_type(type_of(Piece(idx)));
+              put_gating_piece(BLACK, s);
+          }
+      }
+  }
+
+  while ((ss >> token) && !isspace(token) && token != '[')
   {
       if (isdigit(token))
           sq += (token - '0') * EAST; // Advance the given number of files
 
       else if (token == '/')
+      {
           sq += 2 * SOUTH;
+          if (sq < SQ_A1)
+              break;
+      }
 
       else if ((idx = PieceToChar.find(token)) != string::npos)
       {
           put_piece(Piece(idx), sq);
           ++sq;
       }
+  }
 
-      else if (token == '[')
-          break; // Stop before gating pieces
+  // White gating pieces in XBoard format
+  if (xboard)
+  {
+      Square s1 = SQ_A1, s2 = SQ_A1;
+      for (Square s = SQ_A1; (ss >> token) && !isspace(token) && s <= SQ_H1; s++)
+      {
+          if ((idx = PieceToChar.find(token)) != string::npos)
+          {
+              if (type_of(Piece(idx)) == gating_piece(GATE_1))
+                  s1 = s;
+              else
+                  s2 = s;
+          }
+      }
+      put_gating_piece(WHITE, s1);
+      put_gating_piece(WHITE, s2);
   }
   // Gating pieces
-  if (!isspace(token))
+  else if (token == '[')
       while ((ss >> token) && !isspace(token))
       {
           // Allow various formats here. Rank and slash are optional.
@@ -331,7 +366,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
       else if (token == 'Q')
           for (rsq = relative_square(c, SQ_A1); piece_on(rsq) != rook; ++rsq) {}
 
-      else if (token >= 'A' && token <= 'H')
+      else if (isChess960 && token >= 'A' && token <= 'H')
           rsq = make_square(File(token - 'A'), relative_rank(c, RANK_1));
 
       else

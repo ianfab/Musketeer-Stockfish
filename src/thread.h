@@ -73,6 +73,7 @@ public:
   CapturePieceToHistory captureHistory;
   ContinuationHistory contHistory;
   Score contempt;
+  Thread* bestThread; // to fetch best move when in XBoard mode
 };
 
 
@@ -107,9 +108,9 @@ struct ThreadPool : public std::vector<Thread*> {
 
   std::atomic_bool stop, ponder, stopOnPonderhit;
 
-private:
   StateListPtr setupStates;
 
+private:
   uint64_t accumulate(std::atomic<uint64_t> Thread::* member) const {
 
     uint64_t sum = 0;
