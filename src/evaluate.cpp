@@ -89,7 +89,7 @@ namespace {
   constexpr Value SpaceThreshold = Value(12222);
 
   // KingAttackWeights[PieceType] contains king attack weights by piece type
-  constexpr int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 77, 55, 44, 10 };
+  constexpr int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 77, 55, 44, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 };
 
   // Penalties for enemy's safe checks
   constexpr int QueenSafeCheck  = 780;
@@ -101,7 +101,7 @@ namespace {
 
   // MobilityBonus[PieceType-2][attacked] contains bonuses for middle and end game,
   // indexed by piece type and number of attacked squares in the mobility area.
-  constexpr Score MobilityBonus[PIECE_TYPE_NB - 2][32] = {
+  constexpr Score MobilityBonus[PIECE_TYPE_NB - 2][35] = {
     { S(-75,-76), S(-57,-54), S( -9,-28), S( -2,-10), S(  6,  5), S( 14, 12), // Knights
       S( 22, 26), S( 29, 29), S( 36, 29) },
     { S(-48,-59), S(-20,-23), S( 16, -3), S( 26, 13), S( 38, 24), S( 51, 42), // Bishops
@@ -111,6 +111,56 @@ namespace {
       S(  9,112), S( 16,118), S( 30,132), S( 29,142), S( 32,155), S( 38,165),
       S( 46,166), S( 48,169), S( 58,171) },
     { S(-39,-36), S(-21,-15), S(  3,  8), S(  3, 18), S( 14, 34), S( 22, 54), // Queens
+      S( 28, 61), S( 41, 73), S( 43, 79), S( 48, 92), S( 56, 94), S( 60,104),
+      S( 60,113), S( 66,120), S( 67,123), S( 70,126), S( 71,133), S( 73,136),
+      S( 79,140), S( 88,143), S( 88,148), S( 99,166), S(102,170), S(102,175),
+      S(106,184), S(109,191), S(113,206), S(116,212) },
+    { S(-39,-36), S(-21,-15), S(  3,  8), S(  3, 18), S( 14, 34), S( 22, 54), // Cannons
+      S( 28, 61), S( 41, 73), S( 43, 79), S( 48, 92), S( 56, 94), S( 60,104),
+      S( 60,113), S( 66,120), S( 67,123), S( 70,126), S( 71,133), S( 73,136),
+      S( 79,140), S( 88,143), S( 88,148), S( 99,166), S(102,170), S(102,175),
+      S(106,184), S(109,191), S(113,206), S(116,212) },
+    { S(-39,-36), S(-21,-15), S(  3,  8), S(  3, 18), S( 14, 34), S( 22, 54), // Leopards
+      S( 28, 61), S( 41, 73), S( 43, 79), S( 48, 92), S( 56, 94), S( 60,104),
+      S( 60,113), S( 66,120), S( 67,123), S( 70,126), S( 71,133), S( 73,136),
+      S( 79,140), S( 88,143), S( 88,148), S( 99,166), S(102,170), S(102,175),
+      S(106,184), S(109,191), S(113,206), S(116,212) },
+    { S(-39,-36), S(-21,-15), S(  3,  8), S(  3, 18), S( 14, 34), S( 22, 54), // Archbishops
+      S( 28, 61), S( 41, 73), S( 43, 79), S( 48, 92), S( 56, 94), S( 60,104),
+      S( 60,113), S( 66,120), S( 67,123), S( 70,126), S( 71,133), S( 73,136),
+      S( 79,140), S( 88,143), S( 88,148), S( 99,166), S(102,170), S(102,175),
+      S(106,184), S(109,191), S(113,206), S(116,212) },
+    { S(-39,-36), S(-21,-15), S(  3,  8), S(  3, 18), S( 14, 34), S( 22, 54), // Chancellors
+      S( 28, 61), S( 41, 73), S( 43, 79), S( 48, 92), S( 56, 94), S( 60,104),
+      S( 60,113), S( 66,120), S( 67,123), S( 70,126), S( 71,133), S( 73,136),
+      S( 79,140), S( 88,143), S( 88,148), S( 99,166), S(102,170), S(102,175),
+      S(106,184), S(109,191), S(113,206), S(116,212) },
+    { S(-39,-36), S(-21,-15), S(  3,  8), S(  3, 18), S( 14, 34), S( 22, 54), // Spiders
+      S( 28, 61), S( 41, 73), S( 43, 79), S( 48, 92), S( 56, 94), S( 60,104),
+      S( 60,113), S( 66,120), S( 67,123), S( 70,126), S( 71,133), S( 73,136),
+      S( 79,140), S( 88,143), S( 88,148), S( 99,166), S(102,170), S(102,175),
+      S(106,184), S(109,191), S(113,206), S(116,212) },
+    { S(-39,-36), S(-21,-15), S(  3,  8), S(  3, 18), S( 14, 34), S( 22, 54), // Dragons
+      S( 28, 61), S( 41, 73), S( 43, 79), S( 48, 92), S( 56, 94), S( 60,104),
+      S( 60,113), S( 66,120), S( 67,123), S( 70,126), S( 71,133), S( 73,136),
+      S( 79,140), S( 88,143), S( 88,148), S( 99,166), S(102,170), S(102,175),
+      S(106,184), S(109,191), S(113,206), S(116,212) },
+    { S(-39,-36), S(-21,-15), S(  3,  8), S(  3, 18), S( 14, 34), S( 22, 54), // Unicorns
+      S( 28, 61), S( 41, 73), S( 43, 79), S( 48, 92), S( 56, 94), S( 60,104),
+      S( 60,113), S( 66,120), S( 67,123), S( 70,126), S( 71,133), S( 73,136),
+      S( 79,140), S( 88,143), S( 88,148), S( 99,166), S(102,170), S(102,175),
+      S(106,184), S(109,191), S(113,206), S(116,212) },
+    { S(-39,-36), S(-21,-15), S(  3,  8), S(  3, 18), S( 14, 34), S( 22, 54), // Hawks
+      S( 28, 61), S( 41, 73), S( 43, 79), S( 48, 92), S( 56, 94), S( 60,104),
+      S( 60,113), S( 66,120), S( 67,123), S( 70,126), S( 71,133), S( 73,136),
+      S( 79,140), S( 88,143), S( 88,148), S( 99,166), S(102,170), S(102,175),
+      S(106,184), S(109,191), S(113,206), S(116,212) },
+    { S(-39,-36), S(-21,-15), S(  3,  8), S(  3, 18), S( 14, 34), S( 22, 54), // Elephants
+      S( 28, 61), S( 41, 73), S( 43, 79), S( 48, 92), S( 56, 94), S( 60,104),
+      S( 60,113), S( 66,120), S( 67,123), S( 70,126), S( 71,133), S( 73,136),
+      S( 79,140), S( 88,143), S( 88,148), S( 99,166), S(102,170), S(102,175),
+      S(106,184), S(109,191), S(113,206), S(116,212) },
+    { S(-39,-36), S(-21,-15), S(  3,  8), S(  3, 18), S( 14, 34), S( 22, 54), // Fortresses
       S( 28, 61), S( 41, 73), S( 43, 79), S( 48, 92), S( 56, 94), S( 60,104),
       S( 60,113), S( 66,120), S( 67,123), S( 70,126), S( 71,133), S( 73,136),
       S( 79,140), S( 88,143), S( 88,148), S( 99,166), S(102,170), S(102,175),
@@ -858,10 +908,20 @@ namespace {
     initialize<BLACK>();
 
     // Pieces should be evaluated first (populate attack tables)
-    score +=  pieces<WHITE, KNIGHT>() - pieces<BLACK, KNIGHT>()
-            + pieces<WHITE, BISHOP>() - pieces<BLACK, BISHOP>()
-            + pieces<WHITE, ROOK  >() - pieces<BLACK, ROOK  >()
-            + pieces<WHITE, QUEEN >() - pieces<BLACK, QUEEN >();
+    score +=  pieces<WHITE, KNIGHT     >() - pieces<BLACK, KNIGHT     >()
+            + pieces<WHITE, BISHOP     >() - pieces<BLACK, BISHOP     >()
+            + pieces<WHITE, ROOK       >() - pieces<BLACK, ROOK       >()
+            + pieces<WHITE, QUEEN      >() - pieces<BLACK, QUEEN      >()
+            + pieces<WHITE, CANNON     >() - pieces<BLACK, CANNON     >()
+            + pieces<WHITE, LEOPARD    >() - pieces<BLACK, LEOPARD    >()
+            + pieces<WHITE, ARCHBISHOP >() - pieces<BLACK, ARCHBISHOP >()
+            + pieces<WHITE, CHANCELLOR >() - pieces<BLACK, CHANCELLOR >()
+            + pieces<WHITE, SPIDER     >() - pieces<BLACK, SPIDER     >()
+            + pieces<WHITE, DRAGON     >() - pieces<BLACK, DRAGON     >()
+            + pieces<WHITE, UNICORN    >() - pieces<BLACK, UNICORN    >()
+            + pieces<WHITE, HAWK       >() - pieces<BLACK, HAWK       >()
+            + pieces<WHITE, ELEPHANT   >() - pieces<BLACK, ELEPHANT   >()
+            + pieces<WHITE, FORTRESS   >() - pieces<BLACK, FORTRESS   >();
 
     score += mobility[WHITE] - mobility[BLACK];
 
