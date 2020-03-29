@@ -1278,6 +1278,10 @@ bool Position::see_ge(Move m, Value threshold) const {
   // we can hope for.
   balance = PieceValue[MG][piece_on(to)] - threshold;
 
+  // Consider captured gates
+  if (gateBB & to)
+      balance += PieceValue[MG][gating_piece(to)];
+
   if (balance < VALUE_ZERO)
       return false;
 
