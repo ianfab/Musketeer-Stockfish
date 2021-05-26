@@ -44,6 +44,8 @@
 #include <cstdint>
 #include <cstdlib>
 
+#include <string>
+
 #if defined(_MSC_VER)
 // Disable some silly and noisy warning from MSVC compiler
 #pragma warning(disable: 4127) // Conditional expression is constant
